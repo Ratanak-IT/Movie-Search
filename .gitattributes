@@ -1,0 +1,3 @@
+gradlew linguist-detectable=false
+gradlew.bat linguist-detectable=false
+gradle/wrapper/** linguist-detectable=false
