@@ -35,26 +35,47 @@ public class MovieServiceImpl implements MovieService {
                 .build();
     }
 
-    @Override
-    public MovieResponse searchMovies(String query, int page) {
-        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-        String url = String.format("%s/search/movie?query=%s&page=%d", BASE_URL, encodedQuery, page);
-
+    private MovieResponse fetchMovieList(String url) {
         HttpRequest request = buildRequest(url);
-
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             return mapper.readValue(response.body(), MovieResponse.class);
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Failed to search movies: " + e.getMessage());
+            throw new RuntimeException("Failed to fetch movies: " + e.getMessage());
         }
+    }
+
+    @Override
+    public MovieResponse searchMovies(String query, int page) {
+        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+        String url = String.format("%s/search/movie?query=%s&page=%d", BASE_URL, encodedQuery, page);
+        return fetchMovieList(url);
+    }
+
+    @Override
+    public MovieResponse getPopularMovies(int page) {
+        return fetchMovieList(String.format("%s/movie/popular?page=%d", BASE_URL, page));
+    }
+
+    @Override
+    public MovieResponse getTopRatedMovies(int page) {
+        return fetchMovieList(String.format("%s/movie/top_rated?page=%d", BASE_URL, page));
+    }
+
+    @Override
+    public MovieResponse getNowPlayingMovies(int page) {
+        return fetchMovieList(String.format("%s/movie/now_playing?page=%d", BASE_URL, page));
+    }
+
+    @Override
+    public MovieResponse getUpcomingMovies(int page) {
+        return fetchMovieList(String.format("%s/movie/upcoming?page=%d", BASE_URL, page));
     }
 
     @Override
     public Movie getMovieDetail(int movieId) {
         String url = String.format("%s/movie/%d", BASE_URL, movieId);
         HttpRequest request = buildRequest(url);
-
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             return mapper.readValue(response.body(), Movie.class);
@@ -67,28 +88,20 @@ public class MovieServiceImpl implements MovieService {
     public String getTrailerUrl(int movieId) {
         String url = String.format("%s/movie/%d/videos", BASE_URL, movieId);
         HttpRequest request = buildRequest(url);
-
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             VideoResponse videoResponse = mapper.readValue(response.body(), VideoResponse.class);
-
-            if (videoResponse.getResults() == null || videoResponse.getResults().isEmpty()) {
-                return null;
-            }
-
-            // Find first YouTube trailer
+            if (videoResponse.getResults() == null || videoResponse.getResults().isEmpty()) return null;
             return videoResponse.getResults().stream()
-                    .filter(v -> "YouTube".equalsIgnoreCase(v.getSite())
-                            && "Trailer".equalsIgnoreCase(v.getType()))
+                    .filter(v -> "YouTube".equalsIgnoreCase(v.getSite()) && "Trailer".equalsIgnoreCase(v.getType()))
                     .map(v -> "https://www.youtube.com/watch?v=" + v.getKey())
                     .findFirst()
                     .orElse(
-                        // Fallback: any YouTube video
-                        videoResponse.getResults().stream()
-                            .filter(v -> "YouTube".equalsIgnoreCase(v.getSite()))
-                            .map(v -> "https://www.youtube.com/watch?v=" + v.getKey())
-                            .findFirst()
-                            .orElse(null)
+                            videoResponse.getResults().stream()
+                                    .filter(v -> "YouTube".equalsIgnoreCase(v.getSite()))
+                                    .map(v -> "https://www.youtube.com/watch?v=" + v.getKey())
+                                    .findFirst()
+                                    .orElse(null)
                     );
         } catch (IOException | InterruptedException e) {
             return null;

@@ -121,6 +121,20 @@ public class TableRenderer {
         table.addCell(" " + value, LEFT, 3);
     }
 
+
+    public static void tableMenu(){
+        Table tableMenu= new Table(2, BorderStyle.UNICODE_ROUND_BOX_WIDE, ShownBorders.ALL);
+        tableMenu.addCell("MOVIE SEARCH", CENTER, 2);
+        tableMenu.addCell("[1]  Search Movie");
+        tableMenu.addCell("[2]  Popular Movies");
+        tableMenu.addCell("[3]  Top Rated Movies");
+        tableMenu.addCell("[4]  Now Playing");
+        tableMenu.addCell("[5]  Upcoming Movies");
+        tableMenu.addCell("[e]  Exit");
+        System.out.println(tableMenu.render());
+        System.out.print("[-] Choose an option: ");
+    }
+
     private static String safe(String s) {
         return s != null ? s : "N/A";
     }

@@ -13,41 +13,85 @@ public class App {
     private static final MovieService movieService = new MovieServiceImpl();
     private static final Scanner scanner = new Scanner(System.in);
 
-    private static String currentQuery   = "";
-    private static int    currentPage    = 1;
-    private static int    totalPages     = 1;
-    private static int    totalResults   = 0;
+    private static String currentQuery    = "";
+    private static int    currentPage     = 1;
+    private static int    totalPages      = 1;
+    private static int    totalResults    = 0;
     private static MovieResponse currentResponse = null;
+    private static String currentMode     = "";
 
     public static void main(String[] args) {
         printAsciiArt();
-        mainLoop();
+        mainMenu();
     }
 
-    private static void mainLoop() {
+    private static void mainMenu() {
         while (true) {
-            System.out.print("\n[-] Enter movie title : ");
-            String input = scanner.nextLine().trim();
+            TableRenderer.tableMenu();
+//            System.out.print("[-] Choose an option: ");
+            String op = scanner.nextLine().trim().toLowerCase();
 
-            if (input.equalsIgnoreCase("e")) {
-                System.out.println("Goodbye!");
-                System.exit(0);
+            switch (op) {
+                case "1" -> {
+                    currentMode = "search";
+                    System.out.print("[-] Enter movie title: ");
+                    String query = scanner.nextLine().trim();
+                    if (query.isEmpty()) continue;
+                    currentQuery = query;
+                    currentPage  = 1;
+                    fetchAndDisplay();
+                    paginationLoop();
+                }
+                case "2" -> {
+                    currentMode = "popular";
+                    currentQuery = "Popular Movies";
+                    currentPage  = 1;
+                    fetchAndDisplay();
+                    paginationLoop();
+                }
+                case "3" -> {
+                    currentMode = "top_rated";
+                    currentQuery = "Top Rated Movies";
+                    currentPage  = 1;
+                    fetchAndDisplay();
+                    paginationLoop();
+                }
+                case "4" -> {
+                    currentMode = "now_playing";
+                    currentQuery = "Now Playing";
+                    currentPage  = 1;
+                    fetchAndDisplay();
+                    paginationLoop();
+                }
+                case "5" -> {
+                    currentMode = "upcoming";
+                    currentQuery = "Upcoming Movies";
+                    currentPage  = 1;
+                    fetchAndDisplay();
+                    paginationLoop();
+                }
+                case "e" -> {
+                    System.out.println("Goodbye!");
+                    System.exit(0);
+                }
+                default -> System.out.println("[!] Invalid option. Please try again.");
             }
-
-            if (input.isEmpty()) continue;
-
-            currentQuery = input;
-            currentPage  = 1;
-            searchAndDisplay();
-            paginationLoop();
         }
     }
 
-    private static void searchAndDisplay() {
-        System.out.println("\nSearching...");
-        currentResponse = movieService.searchMovies(currentQuery, currentPage);
-        totalPages      = currentResponse.getTotalPages()   != null ? currentResponse.getTotalPages()   : 1;
-        totalResults    = currentResponse.getTotalResults() != null ? currentResponse.getTotalResults() : 0;
+    private static void fetchAndDisplay() {
+        System.out.println("\nLoading...");
+        currentResponse = switch (currentMode) {
+            case "search"      -> movieService.searchMovies(currentQuery, currentPage);
+            case "popular"     -> movieService.getPopularMovies(currentPage);
+            case "top_rated"   -> movieService.getTopRatedMovies(currentPage);
+            case "now_playing" -> movieService.getNowPlayingMovies(currentPage);
+            case "upcoming"    -> movieService.getUpcomingMovies(currentPage);
+            default            -> movieService.getPopularMovies(currentPage);
+        };
+
+        totalPages   = currentResponse.getTotalPages()   != null ? currentResponse.getTotalPages()   : 1;
+        totalResults = currentResponse.getTotalResults() != null ? currentResponse.getTotalResults() : 0;
 
         List<String> trailerUrls = new ArrayList<>();
         if (currentResponse.getResults() != null) {
@@ -57,19 +101,20 @@ public class App {
         }
 
         TableRenderer.displayMovieTableWithTrailers(currentResponse, currentQuery, trailerUrls);
-        System.out.printf("Page %d / %d  |  Total results: %d  |  Query: \"%s\"%n",
+        System.out.printf("Page %d / %d  |  Total results: %d  |  Category: %s%n",
                 currentPage, totalPages, totalResults, currentQuery);
     }
 
     private static void paginationLoop() {
         while (true) {
             System.out.println("""
-                    \n[n]  Next page
-                    [p]  Previous page
-                    [g]  Go to page
-                    [md] Movie Detail
-                    [b]  Back (new search)
-                    [e]  Exit""");
+                    
+                    [n]   Next page
+                    [p]   Previous page
+                    [g]   Go to page
+                    [md]  Movie Detail
+                    [b]   Back to menu
+                    [e]   Exit""");
             System.out.print("[-] Choose an option: ");
             String op = scanner.nextLine().trim().toLowerCase();
 
@@ -77,56 +122,54 @@ public class App {
                 case "n" -> {
                     if (currentPage < totalPages) {
                         currentPage++;
-                        searchAndDisplay();
+                        fetchAndDisplay();
                     } else {
-                        System.out.printf("Already on last page (%d).%n", totalPages);
+                        System.out.printf("[!] Already on last page (%d).%n", totalPages);
                     }
                 }
                 case "p" -> {
                     if (currentPage > 1) {
                         currentPage--;
-                        searchAndDisplay();
+                        fetchAndDisplay();
                     } else {
-                        System.out.println("Already on first page.");
+                        System.out.println("[!] Already on first page.");
                     }
                 }
                 case "g" -> {
                     System.out.printf("[!] Enter page number (1 - %d): ", totalPages);
-                    String pageInput = scanner.nextLine().trim();
+                    String input = scanner.nextLine().trim();
                     try {
-                        int target = Integer.parseInt(pageInput);
+                        int target = Integer.parseInt(input);
                         if (target < 1 || target > totalPages) {
-                            System.out.printf("Page must be between 1 and %d.%n", totalPages);
+                            System.out.printf("[!] Page must be between 1 and %d.%n", totalPages);
                         } else {
                             currentPage = target;
-                            searchAndDisplay();
+                            fetchAndDisplay();
                         }
                     } catch (NumberFormatException e) {
-                        System.out.println("Invalid page number.");
+                        System.out.println("[!] Invalid page number.");
                     }
                 }
                 case "md" -> {
                     System.out.print("[!] Enter movie ID: ");
-                    String idInput = scanner.nextLine().trim();
+                    String input = scanner.nextLine().trim();
                     try {
-                        int movieId = Integer.parseInt(idInput);
+                        int movieId = Integer.parseInt(input);
                         showMovieDetail(movieId);
                         TableRenderer.displayMovieTableWithTrailers(
                                 currentResponse, currentQuery, fetchTrailers(currentResponse));
-                        System.out.printf("Page %d / %d  |  Total results: %d  |  Query: \"%s\"%n",
+                        System.out.printf("Page %d / %d  |  Total results: %d  |  Category: %s%n",
                                 currentPage, totalPages, totalResults, currentQuery);
                     } catch (NumberFormatException e) {
-                        System.out.println("Invalid movie ID.");
+                        System.out.println("[!] Invalid movie ID.");
                     }
                 }
-                case "b" -> {
-                    return;
-                }
+                case "b" -> { return; }
                 case "e" -> {
                     System.out.println("Goodbye!");
                     System.exit(0);
                 }
-                default -> System.out.println("Unknown option. Please try again.");
+                default -> System.out.println("[!] Unknown option. Please try again.");
             }
         }
     }
@@ -138,7 +181,7 @@ public class App {
             String trailerUrl = movieService.getTrailerUrl(movieId);
             TableRenderer.displayMovieDetail(detail, trailerUrl);
         } catch (Exception e) {
-            System.out.println("Could not fetch detail: " + e.getMessage());
+            System.out.println("[!] Could not fetch detail: " + e.getMessage());
         }
     }
 
