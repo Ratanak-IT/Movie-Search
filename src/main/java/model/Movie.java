@@ -22,7 +22,6 @@ public class Movie {
     @JsonProperty("vote_average")
     private Double voteAverage;
 
-    // Detail fields (populated by movie detail API)
     private Integer runtime;
     private Long budget;
 
